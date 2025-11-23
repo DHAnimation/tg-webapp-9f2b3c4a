@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Оплата номерка</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex,nofollow">
+
+  <!-- Telegram WebApp SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      padding: 16px;
+    }
+    h2 { margin-top: 0; }
+    pre {
+      white-space: pre-wrap;
+      font-family: inherit;
+      background: #f3f3f3;
+      padding: 8px;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+    .field {
+      margin: 12px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    input {
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 14px;
+    }
+    button {
+      margin-top: 16px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: none;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h2 id="title">Номерок</h2>
+  <pre id="details"></pre>
+
+  <div class="field">
+    <label for="fio">Ваши ФИО (как в банке)</label>
+    <input id="fio" placeholder="Иванов Иван Иванович">
+  </div>
+
+  <button id="btnPaid">✅ Я оплатил</button>
+
+  <script>
+    const tg = window.Telegram.WebApp;
+    tg.expand();
+
+    // параметры, которые передаст бот в URL
+    const params = new URLSearchParams(window.location.search);
+    const gameId = params.get('game_id') || '?';
+    const slot = params.get('slot') || '?';
+    const price = params.get('price') || '?';
+    const bank = params.get('bank') || '';
+    const name = params.get('name') || '';
+    const phone = params.get('phone') || '';
+
+    document.getElementById('title').innerText =
+      `Игра #${gameId}, номерок #${slot}`;
+
+    document.getElementById('details').innerText =
+      `Сумма: ${price} ₽\n\n` +
+      `Банк: ${bank}\nПолучатель: ${name}\nНомер: ${phone}`;
+
+    document.getElementById('btnPaid').onclick = () => {
+      const fio = document.getElementById('fio').value.trim();
+      if (!fio) {
+        alert('Введите ФИО');
+        return;
+      }
+
+      const payload = {
+        game_id: gameId,
+        slot: slot,
+        fio: fio
+      };
+
+      tg.sendData(JSON.stringify(payload));
+      tg.close();
+    };
+  </script>
+</body>
+</html>
