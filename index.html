@@ -15,6 +15,14 @@
       padding: 16px;
     }
     h2 { margin-top: 0; }
+    .warning {
+      font-size: 14px;
+      margin-bottom: 12px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: #fff3cd;
+      border: 1px solid #ffe08a;
+    }
     pre {
       white-space: pre-wrap;
       font-family: inherit;
@@ -35,6 +43,10 @@
       border: 1px solid #ccc;
       font-size: 14px;
     }
+    .hint {
+      font-size: 12px;
+      color: #555;
+    }
     button {
       margin-top: 16px;
       padding: 10px 14px;
@@ -47,12 +59,21 @@
   </style>
 </head>
 <body>
-  <h2 id="title">Номерок</h2>
+  <h2 id="title">Игра #?, номерок #?</h2>
+
+  <div class="warning">
+    <b>ВНИМАНИЕ!</b> Вводите сумму и свои данные внимательно и без ошибок.
+    Перед подтверждением ещё раз всё проверьте.
+  </div>
+
   <pre id="details"></pre>
 
   <div class="field">
     <label for="fio">Ваши ФИО (как в банке)</label>
     <input id="fio" placeholder="Иванов Иван Иванович">
+    <div class="hint">
+      Чтобы администратор быстро нашёл и подтвердил ваш платёж.
+    </div>
   </div>
 
   <button id="btnPaid">✅ Я оплатил</button>
@@ -75,12 +96,14 @@
 
     document.getElementById('details').innerText =
       `Сумма: ${price} ₽\n\n` +
-      `Банк: ${bank}\nПолучатель: ${name}\nНомер: ${phone}`;
+      `Банк: ${bank}\n` +
+      `Получатель: ${name}\n` +
+      `Номер: ${phone}`;
 
     document.getElementById('btnPaid').onclick = () => {
       const fio = document.getElementById('fio').value.trim();
       if (!fio) {
-        alert('Введите ФИО');
+        alert('Введите ФИО.');
         return;
       }
 
