@@ -176,7 +176,7 @@
 
       <div class="warning">
         <b>ВНИМАНИЕ!</b> Билет забронирован за вами на 5 минут.<br>
-        Если вы закроете это окно, бронь <b>мгновенно снимется</b>.<br>
+        Если вы закроете это окно, бронь снимется.<br>
         Переводите точно указанную сумму.
       </div>
 
@@ -212,19 +212,15 @@
 
   <script>
     // === ВАЖНО: АДРЕС ТВОЕГО СЕРВЕРА НА AMVERA ===
-    // Убедись, что в конце нет слеша
+    // Убедись, что в конце нет слеша, так как он добавляется в URL_LOCK
     const BASE_URL = "https://ufa-bot-dhanimation.amvera.io"; 
     
     // Эндпоинты
     const URL_LOCK = BASE_URL + "/webapp/lock";
     const URL_PAID = BASE_URL + "/webapp/paid";
-    const URL_UNLOCK = BASE_URL + "/webapp/unlock"; // Для мгновенной разблокировки
+    const URL_UNLOCK = BASE_URL + "/webapp/unlock";
 
     const tg = window.Telegram.WebApp;
-
-    // Флаг, который показывает, отправляем ли мы заявку.
-    // Если true, то при закрытии окна бронь снимать НЕ нужно (так как заявка ушла админу).
-    let isSubmitting = false;
 
     function b64DecodeUnicode(str) {
       if (!str) return "";
@@ -244,8 +240,10 @@
       tg.ready();
       try { tg.expand(); } catch(e){}
 
+      // Применяем цвета темы Telegram
       document.body.style.backgroundColor = tg.themeParams.secondary_bg_color || "#f3f3f3";
       
+      // Парсим параметры запуска
       let rawParam = "";
       if (tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
         rawParam = b64DecodeUnicode(tg.initDataUnsafe.start_param);
@@ -257,7 +255,7 @@
       let bank = "", payName = "", payPhone = "";
 
       if (rawParam) {
-        // game_id:slot:price:bank|name|phone
+        // Формат: game_id:slot:price:bank|name|phone
         const parts = rawParam.split(":");
         if (parts.length >= 3) {
           gameId = parseInt(parts[0]);
@@ -277,16 +275,18 @@
       const loaderMsg = document.getElementById("loader-msg");
       const formView = document.getElementById("form-view");
 
+      // Если параметры кривые - ошибка
       if (!gameId || !slot) {
         loaderMsg.textContent = "Ошибка: Некорректная ссылка на игру.";
         return;
       }
 
-      // Данные пользователя
       const userId = tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : 0;
       const username = tg.initDataUnsafe.user ? tg.initDataUnsafe.user.username : null;
 
-      // 1. Пытаемся забронировать слот при открытии
+      let submitted = false; // true, если пользователь нажал "Отправить заявку"
+
+      // === ШАГ 1: БЛОКИРОВКА СЛОТА ===
       fetch(URL_LOCK, {
         method: "POST",
         headers: { 
@@ -303,10 +303,10 @@
       .then(res => res.json())
       .then(data => {
         if (data.ok) {
-          // УСПЕХ: Слот наш, показываем форму
+          // УСПЕХ: Слот забронирован, показываем форму
           showForm();
         } else {
-          // ОШИБКА: Слот занят
+          // ОШИБКА: Слот занят или лимит превышен
           const errorText = data.error || "Этот номерок уже занят или у вас есть неоплаченная бронь.";
           tg.showPopup({
             title: "Доступ запрещен",
@@ -320,38 +320,13 @@
       })
       .catch(err => {
         console.error(err);
-        loaderMsg.textContent = "Ошибка соединения с сервером.";
+        loaderMsg.textContent = "Ошибка соединения с сервером. Попробуйте позже.";
         tg.showPopup({
             title: "Ошибка сети",
-            message: "Не удалось связаться с ботом.",
+            message: "Не удалось связаться с ботом. Проверьте интернет.",
             buttons: [{type: "close"}]
         });
       });
-
-      // === ЛОГИКА МГНОВЕННОГО СНЯТИЯ БРОНИ ===
-      function sendUnlockBeacon() {
-        if (isSubmitting) return; // Если заявка ушла, бронь не снимаем
-        if (!gameId || !slot || !userId) return;
-
-        const payload = JSON.stringify({
-          game_id: gameId,
-          slot: slot,
-          user_id: userId
-        });
-
-        // sendBeacon работает даже при закрытии вкладки/приложения
-        const blob = new Blob([payload], {type: 'application/json'});
-        navigator.sendBeacon(URL_UNLOCK, blob);
-      }
-
-      // Слушаем события закрытия
-      window.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'hidden') {
-          sendUnlockBeacon();
-        }
-      });
-      window.addEventListener('pagehide', sendUnlockBeacon);
-
 
       function showForm() {
         loaderView.style.display = "none";
@@ -368,7 +343,7 @@
         `;
       }
 
-      // 2. Обработка кнопки оплаты
+      // === ШАГ 2: ОБРАБОТКА ФОРМЫ ===
       const fioInput = document.getElementById("fio-input");
       const paidCheckbox = document.getElementById("paid-checkbox");
       const submitBtn = document.getElementById("submit-btn");
@@ -384,9 +359,9 @@
       submitBtn.addEventListener("click", () => {
         const fio = fioInput.value.trim();
         if (!fio) return;
+        if (submitted) return; // чтобы не отправлять дважды
 
-        // Блокируем интерфейс и ставим флаг
-        isSubmitting = true;
+        submitted = true;
         submitBtn.disabled = true;
         submitBtn.textContent = "Отправка...";
 
@@ -417,10 +392,10 @@
               tg.close();
             });
           } else {
-            isSubmitting = false; // Возвращаем флаг при ошибке
+            submitted = false; // позволяем попробовать снова
             tg.showPopup({
               title: "Ошибка",
-              message: data.error || "Сбой при отправке.",
+              message: data.error || "Не удалось отправить заявку. Попробуйте снова.",
               buttons: [{type: "close"}]
             });
             submitBtn.disabled = false;
@@ -428,16 +403,48 @@
           }
         })
         .catch(err => {
-          isSubmitting = false;
           console.error(err);
+          submitted = false;
           tg.showPopup({
             title: "Ошибка",
-            message: "Сбой сети.",
+            message: "Произошла ошибка сети при отправке.",
             buttons: [{type: "close"}]
           });
           submitBtn.disabled = false;
           submitBtn.textContent = "Отправить заявку";
         });
+      });
+
+      // === ШАГ 3: СНЯТИЕ БРОНИ ПРИ ЗАКРЫТИИ MINI-APP ===
+      // Если пользователь закрывает окно, и ЗАЯВКА НЕ БЫЛА ОТПРАВЛЕНА,
+      // отправляем на сервер сигнал на разблокировку.
+      window.addEventListener("beforeunload", () => {
+        if (!gameId || !slot || !userId) return;
+        if (submitted) return; // если уже отправили заявку, бронь не снимаем здесь
+
+        const payload = JSON.stringify({
+          game_id: gameId,
+          slot: slot,
+          user_id: userId
+        });
+
+        try {
+          // sendBeacon лучше всего подходит для событий закрытия вкладки
+          const blob = new Blob([payload], { type: "application/json" });
+          navigator.sendBeacon(URL_UNLOCK, blob);
+        } catch (e) {
+          // резервный вариант через fetch с keepalive
+          try {
+            fetch(URL_UNLOCK, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: payload,
+              keepalive: true
+            });
+          } catch (err) {
+            console.error("unlock fetch error", err);
+          }
+        }
       });
     });
   </script>
