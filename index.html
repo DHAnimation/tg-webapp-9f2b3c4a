@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="robots" content="noindex,nofollow" />
 
+  <!-- Telegram WebApp SDK -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
   <style>
@@ -86,6 +87,7 @@
 
     button {
       width: 100%;
+
       padding: 11px 10px;
       border-radius: 10px;
       border: none;
@@ -119,7 +121,7 @@
     <h2 id="title">Игра #?, номерок #?</h2>
 
     <div class="warning">
-      <b>ВНИМАНИЕ!</b> Вводите сумму и свои данные внимательно и без ошибок.
+      <b>ВНИМАНИЕ!</b> Оплата строго по указанным реквизитам, внимательно и без ошибок.
       Перед подтверждением ещё раз всё проверьте.
     </div>
 
@@ -156,100 +158,144 @@
   </div>
 
   <script>
-    const tg = window.Telegram.WebApp;
-    tg.expand();
+    document.addEventListener("DOMContentLoaded", () => {
+      const tg = window.Telegram && window.Telegram.WebApp
+        ? window.Telegram.WebApp
+        : null;
 
-    // формат start_param:
-    // game_id:slot:price:bank|name|phone  (всё URL-кодировано)
-    const rawParam = decodeURIComponent(tg.initDataUnsafe?.start_param || "");
-    let gameId = null;
-    let slot = null;
-    let price = null;
-    let bank = "";
-    let payName = "";
-    let payPhone = "";
-
-    if (rawParam) {
-      const parts = rawParam.split(":");
-
-      if (parts.length >= 3) {
-        const g = parseInt(parts[0]);
-        const s = parseInt(parts[1]);
-        const p = parseInt(parts[2]);
-
-        gameId = Number.isNaN(g) ? null : g;
-        slot   = Number.isNaN(s) ? null : s;
-        price  = Number.isNaN(p) ? null : p;
+      // Если запущено внутри Telegram — расширяем и говорим, что готовы
+      if (tg) {
+        try {
+          tg.expand();
+        } catch (e) {
+          console.error("expand error", e);
+        }
+        try {
+          tg.ready();  // важный момент: убирает вечный loader
+        } catch (e) {
+          console.error("ready error", e);
+        }
       }
 
-      if (parts.length >= 4) {
-        const rest = parts.slice(3).join(":");
-        const [b, n, ph] = rest.split("|");
-        bank = b || "";
-        payName = n || "";
-        payPhone = ph || "";
+      // читаем start_param, если он есть
+      let rawParam = "";
+      if (tg && tg.initDataUnsafe && typeof tg.initDataUnsafe.start_param === "string") {
+        try {
+          rawParam = decodeURIComponent(tg.initDataUnsafe.start_param);
+        } catch (e) {
+          console.error("decode start_param error", e);
+          rawParam = "";
+        }
       }
-    }
 
-    // подставляем текст
-    const titleEl = document.getElementById("title");
-    if (gameId && slot) {
-      titleEl.textContent = `Игра #${gameId}, номерок #${slot}`;
-    }
+      let gameId = null;
+      let slot = null;
+      let price = null;
+      let bank = "";
+      let payName = "";
+      let payPhone = "";
 
-    const amountEl = document.getElementById("amount-box");
-    if (price) {
-      amountEl.textContent = `${price} ₽`;
-    }
+      if (rawParam) {
+        // формат: game_id:slot:price:bank|name|phone
+        const parts = rawParam.split(":");
 
-    const detailsEl = document.getElementById("details-box");
-    detailsEl.textContent =
+        if (parts.length >= 3) {
+          const g = parseInt(parts[0], 10);
+          const s = parseInt(parts[1], 10);
+          const p = parseInt(parts[2], 10);
+
+          gameId = Number.isNaN(g) ? null : g;
+          slot   = Number.isNaN(s) ? null : s;
+          price  = Number.isNaN(p) ? null : p;
+        }
+
+        if (parts.length >= 4) {
+          const rest = parts.slice(3).join(":");
+          const splitted = rest.split("|");
+          bank = splitted[0] || "";
+          payName = splitted[1] || "";
+          payPhone = splitted[2] || "";
+        }
+      }
+
+      // подставляем текст в интерфейс
+      const titleEl = document.getElementById("title");
+      if (gameId && slot) {
+        titleEl.textContent = `Игра #${gameId}, номерок #${slot}`;
+      } else {
+        titleEl.textContent = "Игра и номерок не определены";
+      }
+
+      const amountEl = document.getElementById("amount-box");
+      if (price) {
+        amountEl.textContent = `${price} ₽`;
+      } else {
+        amountEl.textContent = "? ₽";
+      }
+
+      const detailsEl = document.getElementById("details-box");
+      detailsEl.textContent =
 `Банк: ${bank || "—"}
 Получатель: ${payName || "—"}
 Номер: ${payPhone || "—"}`;
 
-    // логика формы
-    const fioInput = document.getElementById("fio-input");
-    const paidCheckbox = document.getElementById("paid-checkbox");
-    const submitBtn = document.getElementById("submit-btn");
+      // логика формы
+      const fioInput = document.getElementById("fio-input");
+      const paidCheckbox = document.getElementById("paid-checkbox");
+      const submitBtn = document.getElementById("submit-btn");
 
-    function updateButtonState() {
-      const fioOk = fioInput.value.trim().length >= 3;
-      submitBtn.disabled = !(fioOk && paidCheckbox.checked);
-    }
-
-    fioInput.addEventListener("input", updateButtonState);
-    paidCheckbox.addEventListener("change", updateButtonState);
-
-    submitBtn.addEventListener("click", () => {
-      const fio = fioInput.value.trim();
-      if (!fio) {
-        tg.showAlert("Введите ФИО.");
-        return;
-      }
-      if (!paidCheckbox.checked) {
-        tg.showAlert("Поставьте галочку «Я оплатил».");
-        return;
-      }
-      if (!gameId || !slot) {
-        tg.showAlert("Ошибка данных игры. Попробуйте ещё раз.");
-        return;
+      function updateButtonState() {
+        const fioOk = fioInput.value.trim().length >= 3;
+        submitBtn.disabled = !(fioOk && paidCheckbox.checked);
       }
 
-      const payload = {
-        game_id: gameId,
-        slot: slot,
-        fio: fio,
-      };
+      fioInput.addEventListener("input", updateButtonState);
+      paidCheckbox.addEventListener("change", updateButtonState);
 
-      // Тут как раз то самое сообщение, которое ты хотел
-      tg.showAlert(
-        "Ваш номерок забронирован.\n" +
-        "После подтверждения администратором он в списке станет ❌ и будет недоступен другим."
-      );
+      submitBtn.addEventListener("click", () => {
+        const fio = fioInput.value.trim();
+        if (!fio) {
+          tg && tg.showAlert
+            ? tg.showAlert("Введите ФИО.")
+            : alert("Введите ФИО.");
+          return;
+        }
+        if (!paidCheckbox.checked) {
+          tg && tg.showAlert
+            ? tg.showAlert("Поставьте галочку «Я оплатил».")
+            : alert("Поставьте галочку «Я оплатил».");
+          return;
+        }
+        if (!gameId || !slot) {
+          tg && tg.showAlert
+            ? tg.showAlert("Ошибка данных игры. Попробуйте ещё раз.")
+            : alert("Ошибка данных игры. Попробуйте ещё раз.");
+          return;
+        }
 
-      tg.sendData(JSON.stringify(payload));
-      tg.close();
+        const payload = {
+          game_id: gameId,
+          slot: slot,
+          fio: fio,
+        };
+
+        const msg =
+          "Ваш номерок забронирован.\n" +
+          "После подтверждения администратором он в списке станет ❌ и будет недоступен другим.";
+
+        if (tg && tg.showAlert) {
+          tg.showAlert(msg);
+        } else {
+          alert(msg);
+        }
+
+        if (tg && tg.sendData) {
+          tg.sendData(JSON.stringify(payload));
+          tg.close && tg.close();
+        } else {
+          console.log("Payload (outside Telegram):", payload);
+        }
+      });
     });
   </script>
 </body>
