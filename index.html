@@ -264,8 +264,8 @@
       fioInput.addEventListener("input", updateButtonState);
       paidCheckbox.addEventListener("change", updateButtonState);
 
-      // URL твоего бэкенда на Amvera
-      const ENDPOINT = "https://ufa-bot-dhanimation.amvera.io";
+      // URL твоего бэкенда на Amvera — с путём /webapp/paid
+      const ENDPOINT = "https://ufa-bot-dhanimation.amvera.io/webapp/paid";
 
       submitBtn.addEventListener("click", () => {
         const fio = fioInput.value.trim();
@@ -322,6 +322,7 @@
             const msgErr = "Не удалось отправить заявку. Попробуйте ещё раз.";
             if (tg && tg.showAlert) tg.showAlert(msgErr);
             else alert(msgErr);
+            if (tg && tg.close) tg.close(); // закрываем даже при ошибке
           });
       });
     });
