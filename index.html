@@ -176,7 +176,7 @@
 
       <div class="warning">
         <b>ВНИМАНИЕ!</b> Билет забронирован за вами на 5 минут.<br>
-        Если вы закроете это окно, бронь мгновенно снимется.<br>
+        Если вы закроете это окно, бронь <b>мгновенно снимется</b>.<br>
         Переводите точно указанную сумму.
       </div>
 
@@ -212,16 +212,18 @@
 
   <script>
     // === ВАЖНО: АДРЕС ТВОЕГО СЕРВЕРА НА AMVERA ===
+    // Убедись, что в конце нет слеша
     const BASE_URL = "https://ufa-bot-dhanimation.amvera.io"; 
     
     // Эндпоинты
     const URL_LOCK = BASE_URL + "/webapp/lock";
     const URL_PAID = BASE_URL + "/webapp/paid";
-    const URL_UNLOCK = BASE_URL + "/webapp/unlock";
+    const URL_UNLOCK = BASE_URL + "/webapp/unlock"; // Для мгновенной разблокировки
 
     const tg = window.Telegram.WebApp;
 
-    // Флаг, чтобы не снимать бронь, если мы успешно отправляем форму
+    // Флаг, который показывает, отправляем ли мы заявку.
+    // Если true, то при закрытии окна бронь снимать НЕ нужно (так как заявка ушла админу).
     let isSubmitting = false;
 
     function b64DecodeUnicode(str) {
@@ -242,7 +244,6 @@
       tg.ready();
       try { tg.expand(); } catch(e){}
 
-      // Применяем цвета темы Telegram
       document.body.style.backgroundColor = tg.themeParams.secondary_bg_color || "#f3f3f3";
       
       let rawParam = "";
@@ -256,6 +257,7 @@
       let bank = "", payName = "", payPhone = "";
 
       if (rawParam) {
+        // game_id:slot:price:bank|name|phone
         const parts = rawParam.split(":");
         if (parts.length >= 3) {
           gameId = parseInt(parts[0]);
@@ -284,7 +286,7 @@
       const userId = tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : 0;
       const username = tg.initDataUnsafe.user ? tg.initDataUnsafe.user.username : null;
 
-      // === 1. БЛОКИРОВКА СЛОТА (При открытии) ===
+      // 1. Пытаемся забронировать слот при открытии
       fetch(URL_LOCK, {
         method: "POST",
         headers: { 
@@ -301,10 +303,10 @@
       .then(res => res.json())
       .then(data => {
         if (data.ok) {
-          // УСПЕХ: Показываем форму
+          // УСПЕХ: Слот наш, показываем форму
           showForm();
         } else {
-          // ОШИБКА
+          // ОШИБКА: Слот занят
           const errorText = data.error || "Этот номерок уже занят или у вас есть неоплаченная бронь.";
           tg.showPopup({
             title: "Доступ запрещен",
@@ -318,13 +320,17 @@
       })
       .catch(err => {
         console.error(err);
-        loaderMsg.textContent = "Ошибка сети. Проверьте интернет.";
+        loaderMsg.textContent = "Ошибка соединения с сервером.";
+        tg.showPopup({
+            title: "Ошибка сети",
+            message: "Не удалось связаться с ботом.",
+            buttons: [{type: "close"}]
+        });
       });
 
-      // === ЛОГИКА СНЯТИЯ БРОНИ ПРИ ЗАКРЫТИИ ===
-      // Если пользователь закрывает окно (сворачивает, нажимает крестик), шлем запрос
+      // === ЛОГИКА МГНОВЕННОГО СНЯТИЯ БРОНИ ===
       function sendUnlockBeacon() {
-        if (isSubmitting) return; // Если отправляем форму, то снимать бронь не надо
+        if (isSubmitting) return; // Если заявка ушла, бронь не снимаем
         if (!gameId || !slot || !userId) return;
 
         const payload = JSON.stringify({
@@ -333,12 +339,12 @@
           user_id: userId
         });
 
-        // navigator.sendBeacon надежнее при закрытии страницы
+        // sendBeacon работает даже при закрытии вкладки/приложения
         const blob = new Blob([payload], {type: 'application/json'});
         navigator.sendBeacon(URL_UNLOCK, blob);
       }
 
-      // Слушаем события закрытия/скрытия
+      // Слушаем события закрытия
       window.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'hidden') {
           sendUnlockBeacon();
@@ -362,7 +368,7 @@
         `;
       }
 
-      // === 2. ОТПРАВКА ФОРМЫ ===
+      // 2. Обработка кнопки оплаты
       const fioInput = document.getElementById("fio-input");
       const paidCheckbox = document.getElementById("paid-checkbox");
       const submitBtn = document.getElementById("submit-btn");
@@ -379,7 +385,7 @@
         const fio = fioInput.value.trim();
         if (!fio) return;
 
-        // Ставим флаг, чтобы beacon не сработал
+        // Блокируем интерфейс и ставим флаг
         isSubmitting = true;
         submitBtn.disabled = true;
         submitBtn.textContent = "Отправка...";
@@ -405,16 +411,16 @@
           if (data.ok) {
             tg.showPopup({
               title: "Заявка принята!",
-              message: "Ожидайте подтверждения.",
+              message: "Администратор проверит оплату и подтвердит номерок.",
               buttons: [{type: "ok"}]
             }, function() {
               tg.close();
             });
           } else {
-            isSubmitting = false; // Вернем флаг, если ошибка
+            isSubmitting = false; // Возвращаем флаг при ошибке
             tg.showPopup({
               title: "Ошибка",
-              message: data.error || "Сбой.",
+              message: data.error || "Сбой при отправке.",
               buttons: [{type: "close"}]
             });
             submitBtn.disabled = false;
