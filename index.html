@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>Оплата номерка</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="robots" content="noindex,nofollow" />
 
   <!-- Telegram WebApp SDK -->
@@ -14,22 +14,24 @@
       font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
       margin: 0;
       padding: 16px;
-      background: #f3f3f3;
+      background: var(--tg-theme-secondary-bg-color, #f3f3f3);
+      color: var(--tg-theme-text-color, #000000);
     }
 
     .card {
       max-width: 480px;
       margin: 0 auto;
-      background: #fff;
+      background: var(--tg-theme-bg-color, #ffffff);
       border-radius: 12px;
-      padding: 16px 16px 20px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+      padding: 16px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     }
 
     h2 {
       margin: 0 0 12px;
       font-size: 20px;
       font-weight: 700;
+      text-align: center;
     }
 
     .warning {
@@ -40,115 +42,119 @@
       border: 1px solid #f5d96b;
       font-size: 13px;
       line-height: 1.4;
-    }
-
-    .warning b {
-      font-weight: 700;
+      color: #5c4b00;
     }
 
     .field {
       margin-bottom: 12px;
-      font-size: 14px;
     }
 
     .field-label {
       margin-bottom: 4px;
       font-weight: 600;
+      font-size: 14px;
+      color: var(--tg-theme-hint-color, #777);
     }
 
     .field-box {
-      padding: 8px 10px;
+      padding: 10px;
       border-radius: 8px;
-      border: 1px solid #ddd;
-      background: #fafafa;
-      min-height: 30px;
-      font-size: 14px;
+      background: var(--tg-theme-secondary-bg-color, #fafafa);
+      border: 1px solid var(--tg-theme-hint-color, #ddd);
+      font-size: 15px;
       white-space: pre-line;
+      color: var(--tg-theme-text-color, #000);
     }
 
     input {
       width: 100%;
-      padding: 9px 10px;
+      padding: 12px;
       border-radius: 8px;
-      border: 1px solid #ccc;
-      font-size: 14px;
+      border: 1px solid var(--tg-theme-hint-color, #ccc);
+      background: var(--tg-theme-bg-color, #fff);
+      color: var(--tg-theme-text-color, #000);
+      font-size: 16px; /* 16px чтобы iOS не зумил */
       box-sizing: border-box;
+      outline: none;
+    }
+    
+    input:focus {
+      border-color: #4caf50;
     }
 
     .hint {
       margin-top: 4px;
-      color: #777;
+      color: var(--tg-theme-hint-color, #999);
       font-size: 12px;
     }
 
     .btn-row {
-      margin-top: 16px;
+      margin-top: 20px;
     }
 
     button {
       width: 100%;
-      padding: 11px 10px;
+      padding: 14px;
       border-radius: 10px;
       border: none;
-      font-size: 15px;
+      font-size: 16px;
       font-weight: 600;
       cursor: pointer;
-      background: #4caf50;
-      color: #fff;
+      background: var(--tg-theme-button-color, #4caf50);
+      color: var(--tg-theme-button-text-color, #fff);
+      transition: opacity 0.2s;
     }
 
     button:disabled {
-      opacity: 0.6;
-      cursor: default;
+      opacity: 0.5;
+      cursor: not-allowed;
     }
 
     .checkbox-row {
       display: flex;
       align-items: center;
-      gap: 6px;
-      margin-top: 12px;
-      font-size: 14px;
+      gap: 10px;
+      margin-top: 16px;
+      font-size: 15px;
     }
 
     .checkbox-row input {
-      width: auto;
+      width: 20px;
+      height: 20px;
+      margin: 0;
     }
   </style>
 </head>
 <body>
   <div class="card">
-    <h2 id="title">Игра #?, номерок #?</h2>
+    <h2 id="title">Загрузка...</h2>
 
     <div class="warning">
-      <b>ВНИМАНИЕ!</b> Оплата строго по указанным реквизитам, внимательно и без ошибок.
-      Перед подтверждением ещё раз всё проверьте.
+      <b>ВНИМАНИЕ!</b> Переводите точно указанную сумму.
+      Убедитесь, что реквизиты верны.
     </div>
 
     <div class="field">
       <div class="field-label">Сумма к переводу</div>
-      <div class="field-box" id="amount-box">? ₽</div>
+      <div class="field-box" id="amount-box">— ₽</div>
     </div>
 
     <div class="field">
-      <div class="field-label">Реквизиты получателя</div>
-      <div class="field-box" id="details-box">
-Банк:
-Получатель:
-Номер:
-      </div>
+      <div class="field-label">Реквизиты для оплаты (СБП)</div>
+      <div class="field-box" id="details-box">Загрузка...</div>
     </div>
 
     <div class="field">
       <div class="field-label">Ваши ФИО (как в банке)</div>
-      <input id="fio-input" type="text" placeholder="Иванов Иван Иванович" />
+      <input id="fio-input" type="text" placeholder="Иванов Иван Иванович" autocomplete="off" />
       <div class="hint">
-        Чтобы администратор быстро нашёл и подтвердил ваш платёж.
+        Нужно для проверки платежа администратором.
       </div>
     </div>
 
     <div class="checkbox-row">
       <input type="checkbox" id="paid-checkbox" />
-      <label for="paid-checkbox">✅ Я оплатил</label>
+      <label for="paid-checkbox">Я перевёл деньги по реквизитам</label>
     </div>
 
     <div class="btn-row">
@@ -157,69 +163,52 @@
   </div>
 
   <script>
-    // декод Base64 URL-safe с поддержкой UTF-8
+    // --- НАСТРОЙКИ ---
+    // Если фронт и бэк на одном домене (Amvera), оставь относительный путь:
+    const ENDPOINT = "/webapp/paid"; 
+    // Если разные, впиши полный: "https://your-bot-app.amvera.io/webapp/paid"
+
+    const tg = window.Telegram.WebApp;
+
     function b64DecodeUnicode(str) {
       if (!str) return "";
-      // восстанавливаем нормальный base64
       str = str.replace(/-/g, "+").replace(/_/g, "/");
-      while (str.length % 4) {
-        str += "=";
-      }
-      const decoded = atob(str);
+      while (str.length % 4) { str += "="; }
       try {
-        return decodeURIComponent(
-          decoded.split("").map(function (c) {
-            return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
-          }).join("")
-        );
+        return decodeURIComponent(atob(str).split('').map(function(c) {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
       } catch (e) {
-        console.error("utf8 decode error", e);
-        return decoded;
+        console.error("Decode error", e);
+        return "";
       }
     }
 
     document.addEventListener("DOMContentLoaded", () => {
-      const tg = window.Telegram && window.Telegram.WebApp
-        ? window.Telegram.WebApp
-        : null;
+      tg.ready();
+      tg.expand();
 
-      if (tg) {
-        try { tg.expand(); } catch (e) { console.error("expand error", e); }
-        try { tg.ready(); } catch (e) { console.error("ready error", e); }
-      }
-
-      // ==== читаем start_param ====
+      // Цвета темы Telegram
+      document.body.style.backgroundColor = tg.themeParams.secondary_bg_color || "#f3f3f3";
+      
       let rawParam = "";
-      if (tg && tg.initDataUnsafe && typeof tg.initDataUnsafe.start_param === "string") {
-        try {
-          rawParam = b64DecodeUnicode(tg.initDataUnsafe.start_param);
-        } catch (e) {
-          console.error("decode start_param error", e);
-          rawParam = "";
-        }
+      if (tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
+        rawParam = b64DecodeUnicode(tg.initDataUnsafe.start_param);
       }
 
       let gameId = null;
       let slot = null;
       let price = null;
-      let bank = "";
-      let payName = "";
-      let payPhone = "";
+      let bank = "", payName = "", payPhone = "";
 
       if (rawParam) {
-        // формат: game_id:slot:price:bank|name|phone
+        // Ожидаем: game_id:slot:price:bank|name|phone
         const parts = rawParam.split(":");
-
         if (parts.length >= 3) {
-          const g = parseInt(parts[0], 10);
-          const s = parseInt(parts[1], 10);
-          const p = parseInt(parts[2], 10);
-
-          gameId = Number.isNaN(g) ? null : g;
-          slot   = Number.isNaN(s) ? null : s;
-          price  = Number.isNaN(p) ? null : p;
+          gameId = parseInt(parts[0]);
+          slot = parseInt(parts[1]);
+          price = parseInt(parts[2]);
         }
-
         if (parts.length >= 4) {
           const rest = parts.slice(3).join(":");
           const splitted = rest.split("|");
@@ -229,101 +218,82 @@
         }
       }
 
-      // данные юзера из Telegram
-      const user = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) || null;
-
+      // Заполняем интерфейс
       const titleEl = document.getElementById("title");
-      if (gameId && slot) {
-        titleEl.textContent = `Игра #${gameId}, номерок #${slot}`;
-      } else {
-        titleEl.textContent = "Игра и номерок не определены";
-      }
+      if (gameId && slot) titleEl.textContent = `Игра #${gameId}, Билет #${slot}`;
+      else titleEl.textContent = "Ошибка данных";
 
-      const amountEl = document.getElementById("amount-box");
-      if (price) {
-        amountEl.textContent = `${price} ₽`;
-      } else {
-        amountEl.textContent = "? ₽";
-      }
-
-      const detailsEl = document.getElementById("details-box");
-      detailsEl.textContent =
-`Банк: ${bank || "—"}
-Получатель: ${payName || "—"}
-Номер: ${payPhone || "—"}`;
+      document.getElementById("amount-box").textContent = price ? `${price} ₽` : "—";
+      
+      document.getElementById("details-box").innerHTML = `
+        Банк: <b>${bank}</b><br>
+        Получатель: <b>${payName}</b><br>
+        Телефон: <b>${payPhone}</b>
+      `;
 
       const fioInput = document.getElementById("fio-input");
       const paidCheckbox = document.getElementById("paid-checkbox");
       const submitBtn = document.getElementById("submit-btn");
 
-      function updateButtonState() {
-        const fioOk = fioInput.value.trim().length >= 3;
-        submitBtn.disabled = !(fioOk && paidCheckbox.checked);
+      function updateBtn() {
+        const hasFio = fioInput.value.trim().length >= 2;
+        submitBtn.disabled = !(hasFio && paidCheckbox.checked);
       }
 
-      fioInput.addEventListener("input", updateButtonState);
-      paidCheckbox.addEventListener("change", updateButtonState);
-
-      // URL твоего бэкенда на Amvera — с путём /webapp/paid
-      const ENDPOINT = "https://ufa-bot-dhanimation.amvera.io/webapp/paid";
+      fioInput.addEventListener("input", updateBtn);
+      paidCheckbox.addEventListener("change", updateBtn);
 
       submitBtn.addEventListener("click", () => {
         const fio = fioInput.value.trim();
-        if (!fio) {
-          tg && tg.showAlert ? tg.showAlert("Введите ФИО.") : alert("Введите ФИО.");
-          return;
-        }
-        if (!paidCheckbox.checked) {
-          const msg = "Поставьте галочку «Я оплатил».";
-          tg && tg.showAlert ? tg.showAlert(msg) : alert(msg);
-          return;
-        }
-        if (!gameId || !slot) {
-          const msg = "Ошибка данных игры. Попробуйте ещё раз.";
-          tg && tg.showAlert ? tg.showAlert(msg) : alert(msg);
-          return;
-        }
+        if (!fio || !gameId) return;
+
+        // Блокируем кнопку
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Отправка...";
 
         const payload = {
           game_id: gameId,
           slot: slot,
           fio: fio,
-          user_id: user ? user.id : null,
-          username: user ? user.username || null : null,
+          user_id: tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : 0,
+          username: tg.initDataUnsafe.user ? tg.initDataUnsafe.user.username : null
         };
 
-        const msg =
-          "Ваш номерок забронирован.\n" +
-          "После подтверждения администратором он в списке станет ❌ и будет недоступен другим.";
-
-        if (tg && tg.showAlert) {
-          tg.showAlert(msg);
-        } else {
-          alert(msg);
-        }
-
-        // отправляем данные на наш сервер, а не через tg.sendData
         fetch(ENDPOINT, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+          headers: { 
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          },
+          body: JSON.stringify(payload)
         })
-          .then((res) => res.json().catch(() => ({})))
-          .then((data) => {
-            if (!data.ok) {
-              const err = data.error || "Ошибка при отправке заявки";
-              if (tg && tg.showAlert) tg.showAlert(err);
-              else alert(err);
-            }
-            if (tg && tg.close) tg.close();
-          })
-          .catch((err) => {
-            console.error("Ошибка запроса:", err);
-            const msgErr = "Не удалось отправить заявку. Попробуйте ещё раз.";
-            if (tg && tg.showAlert) tg.showAlert(msgErr);
-            else alert(msgErr);
-            if (tg && tg.close) tg.close(); // закрываем даже при ошибке
+        .then(res => {
+          if (!res.ok) throw new Error("Ошибка сервера: " + res.status);
+          return res.json();
+        })
+        .then(data => {
+          if (data.ok) {
+            tg.showPopup({
+              title: "Успешно!",
+              message: "Заявка отправлена администратору. Ожидайте подтверждения.",
+              buttons: [{type: "ok"}]
+            }, function() {
+              tg.close();
+            });
+          } else {
+            throw new Error(data.error || "Неизвестная ошибка");
+          }
+        })
+        .catch(err => {
+          console.error(err);
+          tg.showPopup({
+            title: "Ошибка",
+            message: "Не удалось отправить заявку: " + err.message,
+            buttons: [{type: "close"}]
           });
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Отправить заявку";
+        });
       });
     });
   </script>
