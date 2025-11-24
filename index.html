@@ -27,33 +27,39 @@
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     }
 
-    /* Экран загрузки */
+    /* Стили для экрана загрузки/блокировки */
     #loader-view {
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      min-height: 200px;
+      min-height: 250px;
       text-align: center;
     }
-    
+
     .spinner {
       width: 40px;
       height: 40px;
-      border: 4px solid #ddd;
-      border-top-color: #4caf50;
+      border: 4px solid var(--tg-theme-hint-color, #ddd);
+      border-top-color: var(--tg-theme-button-color, #4caf50);
       border-radius: 50%;
       animation: spin 1s linear infinite;
-      margin-bottom: 16px;
+      margin-bottom: 20px;
     }
 
     @keyframes spin {
       to { transform: rotate(360deg); }
     }
 
-    /* Основная форма (скрыта по умолчанию) */
+    .loader-text {
+      font-size: 16px;
+      color: var(--tg-theme-text-color, #000);
+      font-weight: 500;
+    }
+
+    /* Основная форма скрыта по умолчанию */
     #form-view {
-      display: none; 
+      display: none;
     }
 
     h2 {
@@ -108,7 +114,7 @@
     }
     
     input:focus {
-      border-color: #4caf50;
+      border-color: var(--tg-theme-button-color, #4caf50);
     }
 
     .hint {
@@ -151,24 +157,27 @@
       width: 20px;
       height: 20px;
       margin: 0;
+      accent-color: var(--tg-theme-button-color, #4caf50);
     }
   </style>
 </head>
 <body>
   <div class="card">
-    <!-- Экран загрузки / Блокировки -->
+    
+    <!-- ЭКРАН 1: Загрузка и Блокировка -->
     <div id="loader-view">
       <div class="spinner"></div>
-      <div id="loader-text">Проверяем доступность номерка...</div>
+      <div class="loader-text" id="loader-msg">Проверяем доступность билета...</div>
     </div>
 
-    <!-- Основная форма -->
+    <!-- ЭКРАН 2: Форма оплаты -->
     <div id="form-view">
       <h2 id="title">Загрузка...</h2>
 
       <div class="warning">
-        <b>ВНИМАНИЕ!</b> Номерок забронирован за вами на 15 минут.
-        Заполните данные и нажмите кнопку, иначе бронь слетит.
+        <b>ВНИМАНИЕ!</b> Билет забронирован за вами на 15 минут.<br>
+        Если вы закроете это окно, бронь снимется.<br>
+        Переводите точно указанную сумму.
       </div>
 
       <div class="field">
@@ -198,13 +207,15 @@
         <button id="submit-btn" disabled>Отправить заявку</button>
       </div>
     </div>
+
   </div>
 
   <script>
-    // === ВАЖНО: АДРЕС СЕРВЕРА ===
-    // Оставь здесь свой адрес на Amvera
+    // === ВАЖНО: АДРЕС ТВОЕГО СЕРВЕРА НА AMVERA ===
+    // Убедись, что в конце нет слеша, так как он добавляется в URL_LOCK
     const BASE_URL = "https://ufa-bot-dhanimation.amvera.io"; 
     
+    // Эндпоинты
     const URL_LOCK = BASE_URL + "/webapp/lock";
     const URL_PAID = BASE_URL + "/webapp/paid";
 
@@ -227,11 +238,11 @@
     document.addEventListener("DOMContentLoaded", () => {
       tg.ready();
       try { tg.expand(); } catch(e){}
-      
-      // Настройка цветов
-      document.body.style.backgroundColor = tg.themeParams.secondary_bg_color || "#f3f3f3";
 
-      // 1. Парсинг параметров
+      // Применяем цвета темы Telegram
+      document.body.style.backgroundColor = tg.themeParams.secondary_bg_color || "#f3f3f3";
+      
+      // Парсим параметры запуска
       let rawParam = "";
       if (tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
         rawParam = b64DecodeUnicode(tg.initDataUnsafe.start_param);
@@ -243,6 +254,7 @@
       let bank = "", payName = "", payPhone = "";
 
       if (rawParam) {
+        // Формат: game_id:slot:price:bank|name|phone
         const parts = rawParam.split(":");
         if (parts.length >= 3) {
           gameId = parseInt(parts[0]);
@@ -259,22 +271,26 @@
       }
 
       const loaderView = document.getElementById("loader-view");
-      const loaderText = document.getElementById("loader-text");
+      const loaderMsg = document.getElementById("loader-msg");
       const formView = document.getElementById("form-view");
 
+      // Если параметры кривые - ошибка
       if (!gameId || !slot) {
-        loaderText.textContent = "Ошибка: неверные данные игры.";
+        loaderMsg.textContent = "Ошибка: Некорректная ссылка на игру.";
         return;
       }
 
-      // 2. БЛОКИРОВКА СЛОТА (Моментальный запрос при открытии)
-      const user = tg.initDataUnsafe.user;
-      const userId = user ? user.id : 0;
-      const username = user ? user.username : null;
+      // === ШАГ 1: БЛОКИРОВКА СЛОТА ===
+      // Отправляем запрос сразу при загрузке страницы
+      const userId = tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : 0;
+      const username = tg.initDataUnsafe.user ? tg.initDataUnsafe.user.username : null;
 
       fetch(URL_LOCK, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
         body: JSON.stringify({
           game_id: gameId,
           slot: slot,
@@ -288,21 +304,28 @@
           // УСПЕХ: Слот забронирован, показываем форму
           showForm();
         } else {
-          // ОШИБКА: Слот занят или у юзера уже есть долг
+          // ОШИБКА: Слот занят или лимит превышен
+          const errorText = data.error || "Этот номерок уже занят или у вас есть неоплаченная бронь.";
           tg.showPopup({
-            title: "Недоступно",
-            message: data.error || "Этот номерок уже занят или у вас есть неоплаченная бронь.",
+            title: "Доступ запрещен",
+            message: errorText,
             buttons: [{type: "close"}]
           }, function() {
             tg.close();
           });
+          loaderMsg.textContent = errorText;
         }
       })
       .catch(err => {
-        loaderText.textContent = "Ошибка сети. Попробуйте позже.";
+        console.error(err);
+        loaderMsg.textContent = "Ошибка соединения с сервером. Попробуйте позже.";
+        tg.showPopup({
+            title: "Ошибка сети",
+            message: "Не удалось связаться с ботом. Проверьте интернет.",
+            buttons: [{type: "close"}]
+        });
       });
 
-      // Функция отображения формы
       function showForm() {
         loaderView.style.display = "none";
         formView.style.display = "block";
@@ -318,7 +341,7 @@
         `;
       }
 
-      // 3. Логика отправки оплаты
+      // === ШАГ 2: ОБРАБОТКА ФОРМЫ ===
       const fioInput = document.getElementById("fio-input");
       const paidCheckbox = document.getElementById("paid-checkbox");
       const submitBtn = document.getElementById("submit-btn");
@@ -333,27 +356,33 @@
 
       submitBtn.addEventListener("click", () => {
         const fio = fioInput.value.trim();
-        
+        if (!fio) return;
+
         submitBtn.disabled = true;
         submitBtn.textContent = "Отправка...";
 
+        const payload = {
+          game_id: gameId,
+          slot: slot,
+          fio: fio,
+          user_id: userId,
+          username: username
+        };
+
         fetch(URL_PAID, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            game_id: gameId,
-            slot: slot,
-            fio: fio,
-            user_id: userId,
-            username: username
-          })
+          headers: { 
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          },
+          body: JSON.stringify(payload)
         })
         .then(res => res.json())
         .then(data => {
           if (data.ok) {
             tg.showPopup({
-              title: "Успешно!",
-              message: "Заявка отправлена администратору. Ожидайте подтверждения.",
+              title: "Заявка принята!",
+              message: "Администратор проверит оплату и подтвердит номерок.",
               buttons: [{type: "ok"}]
             }, function() {
               tg.close();
@@ -361,7 +390,7 @@
           } else {
             tg.showPopup({
               title: "Ошибка",
-              message: data.error || "Ошибка при отправке.",
+              message: data.error || "Не удалось отправить заявку. Попробуйте снова.",
               buttons: [{type: "close"}]
             });
             submitBtn.disabled = false;
@@ -369,8 +398,14 @@
           }
         })
         .catch(err => {
-          tg.showPopup({ title: "Ошибка", message: "Сбой сети." });
+          console.error(err);
+          tg.showPopup({
+            title: "Ошибка",
+            message: "Произошла ошибка сети при отправке.",
+            buttons: [{type: "close"}]
+          });
           submitBtn.disabled = false;
+          submitBtn.textContent = "Отправить заявку";
         });
       });
     });
