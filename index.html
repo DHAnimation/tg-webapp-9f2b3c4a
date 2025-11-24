@@ -73,7 +73,7 @@
       border: 1px solid var(--tg-theme-hint-color, #ccc);
       background: var(--tg-theme-bg-color, #fff);
       color: var(--tg-theme-text-color, #000);
-      font-size: 16px; /* 16px чтобы iOS не зумил */
+      font-size: 16px; 
       box-sizing: border-box;
       outline: none;
     }
@@ -163,10 +163,8 @@
   </div>
 
   <script>
-    // --- НАСТРОЙКИ ---
-    // Если фронт и бэк на одном домене (Amvera), оставь относительный путь:
-    const ENDPOINT = "/webapp/paid"; 
-    // Если разные, впиши полный: "https://your-bot-app.amvera.io/webapp/paid"
+    // === ВАЖНО: ПОЛНЫЙ АДРЕС ТВОЕГО СЕРВЕРА НА AMVERA ===
+    const ENDPOINT = "https://ufa-bot-dhanimation.amvera.io/webapp/paid"; 
 
     const tg = window.Telegram.WebApp;
 
@@ -186,9 +184,9 @@
 
     document.addEventListener("DOMContentLoaded", () => {
       tg.ready();
-      tg.expand();
+      try { tg.expand(); } catch(e){}
 
-      // Цвета темы Telegram
+      // Цвета темы
       document.body.style.backgroundColor = tg.themeParams.secondary_bg_color || "#f3f3f3";
       
       let rawParam = "";
@@ -202,7 +200,7 @@
       let bank = "", payName = "", payPhone = "";
 
       if (rawParam) {
-        // Ожидаем: game_id:slot:price:bank|name|phone
+        // game_id:slot:price:bank|name|phone
         const parts = rawParam.split(":");
         if (parts.length >= 3) {
           gameId = parseInt(parts[0]);
@@ -247,7 +245,6 @@
         const fio = fioInput.value.trim();
         if (!fio || !gameId) return;
 
-        // Блокируем кнопку
         submitBtn.disabled = true;
         submitBtn.textContent = "Отправка...";
 
