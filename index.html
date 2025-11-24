@@ -162,12 +162,10 @@
       if (!str) return "";
       // восстанавливаем нормальный base64
       str = str.replace(/-/g, "+").replace(/_/g, "/");
-      // добавляем '=' до кратности 4
       while (str.length % 4) {
         str += "=";
       }
       const decoded = atob(str);
-      // декод UTF-8
       try {
         return decodeURIComponent(
           decoded.split("").map(function (c) {
