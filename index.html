@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Оплата номерка</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="robots" content="noindex,nofollow">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex,nofollow" />
 
   <!-- Telegram WebApp SDK -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -12,110 +12,244 @@
   <style>
     body {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      margin: 0;
       padding: 16px;
-    }
-    h2 { margin-top: 0; }
-    .warning {
-      font-size: 14px;
-      margin-bottom: 12px;
-      padding: 8px 10px;
-      border-radius: 8px;
-      background: #fff3cd;
-      border: 1px solid #ffe08a;
-    }
-    pre {
-      white-space: pre-wrap;
-      font-family: inherit;
       background: #f3f3f3;
-      padding: 8px;
+    }
+
+    .card {
+      max-width: 480px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 12px;
+      padding: 16px 16px 20px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    }
+
+    h2 {
+      margin: 0 0 12px;
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .warning {
+      margin: 0 0 16px;
+      padding: 10px 12px;
       border-radius: 8px;
+      background: #fff4cf;
+      border: 1px solid #f5d96b;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .warning b {
+      font-weight: 700;
+    }
+
+    .field {
+      margin-bottom: 12px;
       font-size: 14px;
     }
-    .field {
-      margin: 12px 0;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
+
+    .field-label {
+      margin-bottom: 4px;
+      font-weight: 600;
     }
-    input {
+
+    .field-box {
       padding: 8px 10px;
-      border-radius: 6px;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+      background: #fafafa;
+      min-height: 30px;
+      font-size: 14px;
+      white-space: pre-line;
+    }
+
+    input {
+      width: 100%;
+      padding: 9px 10px;
+      border-radius: 8px;
       border: 1px solid #ccc;
       font-size: 14px;
+      box-sizing: border-box;
     }
+
     .hint {
+      margin-top: 4px;
+      color: #777;
       font-size: 12px;
-      color: #555;
     }
-    button {
+
+    .btn-row {
       margin-top: 16px;
-      padding: 10px 14px;
-      border-radius: 8px;
+    }
+
+    button {
+      width: 100%;
+      padding: 11px 10px;
+      border-radius: 10px;
       border: none;
       font-size: 15px;
       font-weight: 600;
       cursor: pointer;
+      background: #4caf50;
+      color: #fff;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 12px;
+      font-size: 14px;
+    }
+
+    .checkbox-row input {
+      width: auto;
     }
   </style>
 </head>
 <body>
-  <h2 id="title">Игра #?, номерок #?</h2>
+  <div class="card">
+    <h2 id="title">Игра #?, номерок #?</h2>
 
-  <div class="warning">
-    <b>ВНИМАНИЕ!</b> Вводите сумму и свои данные внимательно и без ошибок.
-    Перед подтверждением ещё раз всё проверьте.
-  </div>
+    <div class="warning">
+      <b>ВНИМАНИЕ!</b> Перевод строго по указанным реквизитам, внимательно и без ошибок.
+      Перед подтверждением ещё раз всё проверьте.
+    </div>
 
-  <pre id="details"></pre>
+    <div class="field">
+      <div class="field-label">Сумма к переводу</div>
+      <div class="field-box" id="amount-box">? ₽</div>
+    </div>
 
-  <div class="field">
-    <label for="fio">Ваши ФИО (как в банке)</label>
-    <input id="fio" placeholder="Иванов Иван Иванович">
-    <div class="hint">
-      Чтобы администратор быстро нашёл и подтвердил ваш платёж.
+    <div class="field">
+      <div class="field-label">Реквизиты получателя</div>
+      <div class="field-box" id="details-box">
+Банк:
+Получатель:
+Номер:
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="field-label">Ваши ФИО (как в банке)</div>
+      <input id="fio-input" type="text" placeholder="Иванов Иван Иванович" />
+      <div class="hint">
+        Чтобы администратор быстро нашёл и подтвердил ваш платёж.
+      </div>
+    </div>
+
+    <div class="checkbox-row">
+      <input type="checkbox" id="paid-checkbox" />
+      <label for="paid-checkbox">✅ Я оплатил</label>
+    </div>
+
+    <div class="btn-row">
+      <button id="submit-btn" disabled>Отправить заявку</button>
     </div>
   </div>
 
-  <button id="btnPaid">✅ Я оплатил</button>
-
   <script>
     const tg = window.Telegram.WebApp;
-    tg.expand();
+    tg.expand(); // растянуть окно
 
-    // параметры, которые передаст бот в URL
-    const params = new URLSearchParams(window.location.search);
-    const gameId = params.get('game_id') || '?';
-    const slot = params.get('slot') || '?';
-    const price = params.get('price') || '?';
-    const bank = params.get('bank') || '';
-    const name = params.get('name') || '';
-    const phone = params.get('phone') || '';
+    // ---------- читаем start_param ----------
+    // формат, который даёт бот:
+    // game_id:slot:price:bank|name|phone  (всё ещё и URL-кодировано)
+    const rawParam = decodeURIComponent(tg.initDataUnsafe?.start_param || "");
+    let gameId = null;
+    let slot = null;
+    let price = null;
+    let bank = "";
+    let payName = "";
+    let payPhone = "";
 
-    document.getElementById('title').innerText =
-      `Игра #${gameId}, номерок #${slot}`;
+    if (rawParam) {
+      const parts = rawParam.split(":");
 
-    document.getElementById('details').innerText =
-      `Сумма: ${price} ₽\n\n` +
-      `Банк: ${bank}\n` +
-      `Получатель: ${name}\n` +
-      `Номер: ${phone}`;
+      if (parts.length >= 3) {
+        const g = parseInt(parts[0]);
+        const s = parseInt(parts[1]);
+        const p = parseInt(parts[2]);
 
-    document.getElementById('btnPaid').onclick = () => {
-      const fio = document.getElementById('fio').value.trim();
+        gameId = Number.isNaN(g) ? null : g;
+        slot   = Number.isNaN(s) ? null : s;
+        price  = Number.isNaN(p) ? null : p;
+      }
+
+      // всё, что после третьего ":" — это "bank|name|phone"
+      if (parts.length >= 4) {
+        const rest = parts.slice(3).join(":");
+        const [b, n, ph] = rest.split("|");
+        bank = b || "";
+        payName = n || "";
+        payPhone = ph || "";
+      }
+    }
+
+    // ---------- подставляем текст ----------
+    const titleEl = document.getElementById("title");
+    if (gameId && slot) {
+      titleEl.textContent = `Игра #${gameId}, номерок #${slot}`;
+    }
+
+    const amountEl = document.getElementById("amount-box");
+    if (price) {
+      amountEl.textContent = `${price} ₽`;
+    }
+
+    const detailsEl = document.getElementById("details-box");
+    detailsEl.textContent =
+`Банк: ${bank || "—"}
+Получатель: ${payName || "—"}
+Номер: ${payPhone || "—"}`;
+
+    // ---------- логика формы ----------
+    const fioInput = document.getElementById("fio-input");
+    const paidCheckbox = document.getElementById("paid-checkbox");
+    const submitBtn = document.getElementById("submit-btn");
+
+    function updateButtonState() {
+      const fioOk = fioInput.value.trim().length >= 3;
+      submitBtn.disabled = !(fioOk && paidCheckbox.checked);
+    }
+
+    fioInput.addEventListener("input", updateButtonState);
+    paidCheckbox.addEventListener("change", updateButtonState);
+
+    submitBtn.addEventListener("click", () => {
+      const fio = fioInput.value.trim();
       if (!fio) {
-        alert('Введите ФИО.');
+        tg.showAlert("Введите ФИО.");
+        return;
+      }
+      if (!paidCheckbox.checked) {
+        tg.showAlert("Поставьте галочку 'Я оплатил'.");
         return;
       }
 
+      if (!gameId || !slot) {
+        tg.showAlert("Ошибка данных игры. Попробуйте ещё раз.");
+        return;
+      }
+
+      // ВАЖНО: ключи именно такие, как ждёт Python: game_id, slot, fio
       const payload = {
         game_id: gameId,
         slot: slot,
-        fio: fio
+        fio: fio,
       };
 
       tg.sendData(JSON.stringify(payload));
       tg.close();
-    };
+    });
   </script>
 </body>
 </html>
