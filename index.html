@@ -188,6 +188,7 @@
         try { tg.ready(); } catch (e) { console.error("ready error", e); }
       }
 
+      // ==== читаем start_param ====
       let rawParam = "";
       if (tg && tg.initDataUnsafe && typeof tg.initDataUnsafe.start_param === "string") {
         try {
@@ -228,6 +229,9 @@
         }
       }
 
+      // данные юзера из Telegram
+      const user = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) || null;
+
       const titleEl = document.getElementById("title");
       if (gameId && slot) {
         titleEl.textContent = `Игра #${gameId}, номерок #${slot}`;
@@ -260,6 +264,9 @@
       fioInput.addEventListener("input", updateButtonState);
       paidCheckbox.addEventListener("change", updateButtonState);
 
+      // URL твоего бэкенда на Amvera
+      const ENDPOINT = "https://YOUR-DOMAIN-HERE/webapp/paid";
+
       submitBtn.addEventListener("click", () => {
         const fio = fioInput.value.trim();
         if (!fio) {
@@ -281,6 +288,8 @@
           game_id: gameId,
           slot: slot,
           fio: fio,
+          user_id: user ? user.id : null,
+          username: user ? user.username || null : null,
         };
 
         const msg =
@@ -293,12 +302,27 @@
           alert(msg);
         }
 
-        if (tg && tg.sendData) {
-          tg.sendData(JSON.stringify(payload));
-          tg.close && tg.close();
-        } else {
-          console.log("Payload (outside Telegram):", payload);
-        }
+        // отправляем данные на наш сервер, а не через tg.sendData
+        fetch(ENDPOINT, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        })
+          .then((res) => res.json().catch(() => ({})))
+          .then((data) => {
+            if (!data.ok) {
+              const err = data.error || "Ошибка при отправке заявки";
+              if (tg && tg.showAlert) tg.showAlert(err);
+              else alert(err);
+            }
+            if (tg && tg.close) tg.close();
+          })
+          .catch((err) => {
+            console.error("Ошибка запроса:", err);
+            const msgErr = "Не удалось отправить заявку. Попробуйте ещё раз.";
+            if (tg && tg.showAlert) tg.showAlert(msgErr);
+            else alert(msgErr);
+          });
       });
     });
   </script>
