@@ -6,7 +6,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="robots" content="noindex,nofollow" />
 
-  <!-- Telegram WebApp SDK -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
   <style>
@@ -120,7 +119,7 @@
     <h2 id="title">Игра #?, номерок #?</h2>
 
     <div class="warning">
-      <b>ВНИМАНИЕ!</b> Перевод строго по указанным реквизитам, внимательно и без ошибок.
+      <b>ВНИМАНИЕ!</b> Вводите сумму и свои данные внимательно и без ошибок.
       Перед подтверждением ещё раз всё проверьте.
     </div>
 
@@ -158,11 +157,10 @@
 
   <script>
     const tg = window.Telegram.WebApp;
-    tg.expand(); // растянуть окно
+    tg.expand();
 
-    // ---------- читаем start_param ----------
-    // формат, который даёт бот:
-    // game_id:slot:price:bank|name|phone  (всё ещё и URL-кодировано)
+    // формат start_param:
+    // game_id:slot:price:bank|name|phone  (всё URL-кодировано)
     const rawParam = decodeURIComponent(tg.initDataUnsafe?.start_param || "");
     let gameId = null;
     let slot = null;
@@ -184,7 +182,6 @@
         price  = Number.isNaN(p) ? null : p;
       }
 
-      // всё, что после третьего ":" — это "bank|name|phone"
       if (parts.length >= 4) {
         const rest = parts.slice(3).join(":");
         const [b, n, ph] = rest.split("|");
@@ -194,7 +191,7 @@
       }
     }
 
-    // ---------- подставляем текст ----------
+    // подставляем текст
     const titleEl = document.getElementById("title");
     if (gameId && slot) {
       titleEl.textContent = `Игра #${gameId}, номерок #${slot}`;
@@ -211,7 +208,7 @@
 Получатель: ${payName || "—"}
 Номер: ${payPhone || "—"}`;
 
-    // ---------- логика формы ----------
+    // логика формы
     const fioInput = document.getElementById("fio-input");
     const paidCheckbox = document.getElementById("paid-checkbox");
     const submitBtn = document.getElementById("submit-btn");
@@ -231,21 +228,25 @@
         return;
       }
       if (!paidCheckbox.checked) {
-        tg.showAlert("Поставьте галочку 'Я оплатил'.");
+        tg.showAlert("Поставьте галочку «Я оплатил».");
         return;
       }
-
       if (!gameId || !slot) {
         tg.showAlert("Ошибка данных игры. Попробуйте ещё раз.");
         return;
       }
 
-      // ВАЖНО: ключи именно такие, как ждёт Python: game_id, slot, fio
       const payload = {
         game_id: gameId,
         slot: slot,
         fio: fio,
       };
+
+      // Тут как раз то самое сообщение, которое ты хотел
+      tg.showAlert(
+        "Ваш номерок забронирован.\n" +
+        "После подтверждения администратором он в списке станет ❌ и будет недоступен другим."
+      );
 
       tg.sendData(JSON.stringify(payload));
       tg.close();
