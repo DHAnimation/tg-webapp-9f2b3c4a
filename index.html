@@ -157,6 +157,31 @@
       margin: 0;
       accent-color: var(--tg-theme-button-color, #4caf50);
     }
+
+    .copy-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+
+    .copy-btn {
+      width: auto;
+      flex: 1 1 0;
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      background: var(--tg-theme-secondary-bg-color, #f0f0f0);
+      color: var(--tg-theme-text-color, #000);
+      border: 1px solid var(--tg-theme-hint-color, #ccc);
+      cursor: pointer;
+    }
+
+    .copy-btn:disabled {
+      opacity: 0.4;
+      cursor: default;
+    }
   </style>
 </head>
 <body>
@@ -183,8 +208,12 @@
       </div>
 
       <div class="field">
-        <div class="field-label">Реквизиты для оплаты (СБП)</div>
+        <div class="field-label">Реквизиты для оплаты (СБП, карта)</div>
         <div class="field-box" id="details-box">Загрузка...</div>
+        <div class="copy-row">
+          <button type="button" class="copy-btn" id="copy-phone-btn">📋 Телефон</button>
+          <button type="button" class="copy-btn" id="copy-card-btn">📋 Карта</button>
+        </div>
       </div>
 
       <div class="field">
@@ -244,7 +273,7 @@
       let gameId = null;
       let slot   = null;
       let price  = null;
-      let bank = "", payName = "", payPhone = "";
+      let bank = "", payName = "", payPhone = "", payCard = "";
 
       if (rawParam) {
         const parts = rawParam.split(":");
@@ -259,6 +288,7 @@
           bank     = splitted[0] || "";
           payName  = splitted[1] || "";
           payPhone = splitted[2] || "";
+          payCard  = splitted[3] || "";
         }
       }
 
@@ -326,17 +356,27 @@
         document.getElementById("amount-box").textContent =
           price ? `${price} ₽` : "—";
 
-        document.getElementById("details-box").innerHTML = `
-          Банк: <b>${bank}</b><br>
-          Получатель: <b>${payName}</b><br>
-          Телефон: <b>${payPhone}</b>
-        `;
+        let detailsHtml = "";
+        detailsHtml += `Банк: <b>${bank || "—"}</b><br>`;
+        detailsHtml += `Получатель: <b>${payName || "—"}</b><br>`;
+        detailsHtml += `Телефон: <b>${payPhone || "—"}</b><br>`;
+        detailsHtml += `Карта: <b>${payCard || "—"}</b>`;
+
+        document.getElementById("details-box").innerHTML = detailsHtml;
+
+        // скрываем кнопку копирования карты, если карты нет
+        const copyCardBtn = document.getElementById("copy-card-btn");
+        if (!payCard) {
+          copyCardBtn.disabled = true;
+        }
       }
 
       // --- Работа с формой ---
-      const fioInput     = document.getElementById("fio-input");
-      const paidCheckbox = document.getElementById("paid-checkbox");
-      const submitBtn    = document.getElementById("submit-btn");
+      const fioInput      = document.getElementById("fio-input");
+      const paidCheckbox  = document.getElementById("paid-checkbox");
+      const submitBtn     = document.getElementById("submit-btn");
+      const copyPhoneBtn  = document.getElementById("copy-phone-btn");
+      const copyCardBtn   = document.getElementById("copy-card-btn");
 
       function updateBtn() {
         const hasFio = fioInput.value.trim().length >= 2;
@@ -345,6 +385,76 @@
 
       fioInput.addEventListener("input",  updateBtn);
       paidCheckbox.addEventListener("change", updateBtn);
+
+      function copyText(value, label) {
+        if (!value) return;
+        const msg = label || "Скопировано";
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(value).then(() => {
+            try {
+              tg.showPopup({
+                title: "Готово",
+                message: msg,
+                buttons: [{ type: "ok" }]
+              });
+            } catch (e) {
+              alert(msg);
+            }
+          }).catch(() => {
+            try {
+              tg.showPopup({
+                title: "Ошибка",
+                message: "Не удалось скопировать.",
+                buttons: [{ type: "close" }]
+              });
+            } catch (e) {
+              alert("Не удалось скопировать.");
+            }
+          });
+        } else {
+          // fallback
+          const textarea = document.createElement("textarea");
+          textarea.value = value;
+          textarea.style.position = "fixed";
+          textarea.style.opacity = "0";
+          document.body.appendChild(textarea);
+          textarea.focus();
+          textarea.select();
+          try {
+            document.execCommand("copy");
+            try {
+              tg.showPopup({
+                title: "Готово",
+                message: msg,
+                buttons: [{ type: "ok" }]
+              });
+            } catch (e) {
+              alert(msg);
+            }
+          } catch (e) {
+            try {
+              tg.showPopup({
+                title: "Ошибка",
+                message: "Не удалось скопировать.",
+                buttons: [{ type: "close" }]
+              });
+            } catch (e2) {
+              alert("Не удалось скопировать.");
+            }
+          }
+          document.body.removeChild(textarea);
+        }
+      }
+
+      copyPhoneBtn.addEventListener("click", () => {
+        copyText(payPhone, "Номер телефона скопирован.");
+      });
+
+      copyCardBtn.addEventListener("click", () => {
+        if (!payCard) return;
+        copyText(payCard, "Номер карты скопирован.");
+      });
 
       submitBtn.addEventListener("click", () => {
         const fio = fioInput.value.trim();
